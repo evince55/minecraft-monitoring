@@ -1,0 +1,87 @@
+# Loki Helm values for single-node k3s homelab
+# Deployment mode: SingleBinary (simplest, no object storage needed)
+
+deploymentMode: SingleBinary
+
+# SingleBinary configuration
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClassName: local-path
+
+# Gateway (nginx reverse proxy)
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Disable SimpleScalable components (not needed for SingleBinary)
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# Loki configuration
+loki:
+  auth_enabled: false
+  storage:
+    type: filesystem
+  useTestSchema: true
+  commonConfig:
+    replication_factor: 1
+  limits_config:
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_cache_freshness_per_query: 10m
+    split_queries_by_interval: 15m
+    query_timeout: 300s
+    volume_enabled: true
+
+# Retention: 7 days
+tableManager:
+  retention_deletes_enabled: true
+  retention_period: 168h
+
+# Disable caches (not needed for small install)
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
+# Loki canary (required by chart validation, minimal resources)
+lokiCanary:
+  enabled: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 20m
+      memory: 64Mi
+
+# Monitoring
+monitoring:
+  dashboards:
+    enabled: true
+    labels:
+      grafana_dashboard: "1"
+  serviceMonitor:
+    enabled: true
+    interval: 15s

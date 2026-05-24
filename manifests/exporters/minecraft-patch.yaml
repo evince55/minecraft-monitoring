@@ -1,0 +1,53 @@
+spec:
+  template:
+    spec:
+      containers:
+        - name: minecraft
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: VERSION
+              value: "1.21.4"
+            - name: TYPE
+              value: "PAPER"
+            - name: MEMORY
+              value: "2G"
+            - name: ONLINE_MODE
+              value: "TRUE"
+            - name: ENFORCE_WHITELIST
+              value: "TRUE"
+            - name: LEVEL
+              value: "season2"
+            - name: ENABLE_QUERY
+              value: "true"
+            - name: WHITELIST
+              value: "chaitea321, Arch_Xerneas, Trusker, Centurion99Ch"
+            - name: JVM_XX_OPTS
+              value: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.host=0.0.0.0 -Djava.rmi.server.hostname=127.0.0.1"
+        - name: jmx-exporter
+          image: prom/jmx-exporter:1.2.0
+          args:
+            - "5556"
+            - "/etc/jmx-exporter/config.yaml"
+          ports:
+            - containerPort: 5556
+              name: jmx-metrics
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: jmx-exporter-config
+              mountPath: /etc/jmx-exporter
+              readOnly: true
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: minecraft-data
+        - name: jmx-exporter-config
+          configMap:
+            name: jmx-exporter-config

@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: discord-test
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: monitoring
+spec:
+  groups:
+    - name: test.rules
+      rules:
+        - alert: DiscordWebhookTest
+          expr: vector(1)
+          for: 10s
+          labels:
+            severity: critical
+            namespace: monitoring
+          annotations:
+            summary: "Discord webhook test - safe to delete"
+            description: "If you see this, the Discord integration is working correctly."

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: promtail
+description: Wrapper chart for Promtail
+version: 1.0.0
+dependencies:
+  - name: promtail
+    version: 6.17.1
+    repository: https://grafana.github.io/helm-charts
