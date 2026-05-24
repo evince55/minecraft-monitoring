@@ -15,13 +15,17 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: monitoring-grafana
+                name: kube-prometheus-stack-grafana
                 port:
                   number: 80
           - path: /public
             pathType: Prefix
             backend:
               service:
-                name: monitoring-grafana
+                name: kube-prometheus-stack-grafana
                 port:
                   number: 80
+  tls:
+    - hosts:
+        - "192.168.1.192"
+      secretName: homelab-tls
