@@ -88,7 +88,7 @@ kube-prometheus-stack:
       server:
         domain: "chai-homelab.com"
         root_url: "https://chai-homelab.com/grafana/"
-        serve_from_sub_path: false
+        serve_from_sub_path: true
     sidecar:
       dashboards:
         enabled: true
