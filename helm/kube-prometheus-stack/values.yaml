@@ -1,169 +1,161 @@
 ---
 # kube-prometheus-stack values for k3s homelab
-
-# CRDs are already installed — disable the subchart to avoid ArgoCD annotation size issues
-crds:
-  enabled: false
-
-# Disable admission webhooks to avoid TLS cert issues on single-node
-prometheusOperator:
-  admissionWebhooks:
-    enabled: false
-  resources:
-    requests:
-      cpu: 100m
-      memory: 100Mi
-    limits:
-      cpu: 200m
-      memory: 200Mi
-  tls:
+kube-prometheus-stack:
+  # CRDs are already installed — disable the subchart for ArgoCD
+  crds:
     enabled: false
 
-# Prometheus configuration
-prometheus:
-  prometheusSpec:
-    routePrefix: /prometheus
-    externalUrl: https://chai-homelab.com/prometheus
+  # Disable admission webhooks to avoid TLS cert issues on single-node
+  prometheusOperator:
+    admissionWebhooks:
+      enabled: false
     resources:
       requests:
-        cpu: 200m
-        memory: 512Mi
+        cpu: 100m
+        memory: 100Mi
       limits:
-        cpu: 500m
-        memory: 1Gi
-    storageSpec:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: local-path
-          accessModes: ["ReadWriteOnce"]
-          resources:
-            requests:
-              storage: 10Gi
-    retention: 7d
-    retentionSize: 8GB
-    # Allow Prometheus to discover all ServiceMonitors/PodMonitors in its namespace
-    serviceMonitorSelectorNilUsesHelmValues: false
-    podMonitorSelectorNilUsesHelmValues: false
+        cpu: 200m
+        memory: 200Mi
+    tls:
+      enabled: false
 
-# AlertManager - Discord webhook for critical alerts
-alertmanager:
-  alertmanagerSpec:
+  # Prometheus configuration
+  prometheus:
+    prometheusSpec:
+      routePrefix: /prometheus
+      externalUrl: https://chai-homelab.com/prometheus
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+      retention: 7d
+      retentionSize: 8GB
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+
+  # AlertManager config
+  alertmanager:
+    alertmanagerSpec:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 50Mi
+        limits:
+          cpu: 100m
+          memory: 100Mi
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 1Gi
+      alertmanagerConfigSelector:
+        matchLabels:
+          app: kube-prometheus-stack
+          release: monitoring
+      alertmanagerConfigNamespaceSelector: {}
+      alertmanagerConfigMatcherStrategy:
+        type: None
+
+  # Grafana config
+  grafana:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    adminPassword: "Rufina35"
+    persistence:
+      enabled: true
+      storageClassName: local-path
+      size: 2Gi
+    grafana.ini:
+      server:
+        domain: "chai-homelab.com"
+        root_url: "https://chai-homelab.com/grafana/"
+        serve_from_sub_path: false
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+      datasources:
+        enabled: true
+        label: grafana_datasource
+        additionalDataSources:
+          - name: Prometheus
+            type: prometheus
+            uid: prometheus
+            url: http://monitoring-kube-prometheus-prometheus.monitoring:9090/prometheus/
+            access: proxy
+            isDefault: true
+            jsonData:
+              httpMethod: POST
+              timeInterval: 30s
+
+  # k3s does not run etcd
+  kubeEtcd:
+    enabled: false
+
+  # k3s kube-proxy metrics bound to 127.0.0.1
+  kubeProxy:
+    enabled: false
+
+  kubeScheduler:
+    enabled: false
+
+  kubeControllerManager:
+    enabled: false
+
+  kubelet:
+    enabled: true
+    serviceMonitor:
+      jobLabel: k8s-app
+      https: true
+      cAdvisor: true
+      probes: true
+      resource: true
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: (rest_client_request_duration_seconds_bucket|rest_client_request_duration_seconds_sum)
+          action: drop
+
+  prometheus-node-exporter:
     resources:
       requests:
         cpu: 50m
-        memory: 50Mi
+        memory: 64Mi
       limits:
         cpu: 100m
-        memory: 100Mi
-    storage:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: local-path
-          accessModes: ["ReadWriteOnce"]
-          resources:
-            requests:
-              storage: 1Gi
-    alertmanagerConfigSelector:
-      matchLabels:
-        app: kube-prometheus-stack
-        release: monitoring
-    alertmanagerConfigNamespaceSelector: {}
-    alertmanagerConfigMatcherStrategy:
-      type: None
+        memory: 128Mi
 
-# Grafana configuration
-grafana:
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
-  adminPassword: "Rufina35"
-  persistence:
-    enabled: true
-    storageClassName: local-path
-    size: 2Gi
-  grafana.ini:
-    server:
-      domain: "chai-homelab.com"
-      root_url: "https://chai-homelab.com/grafana/"
-      serve_from_sub_path: false
-  sidecar:
-    dashboards:
-      enabled: true
-      label: grafana_dashboard
-    datasources:
-      enabled: true
-      label: grafana_datasource
-      # Override Prometheus datasource URL to include routePrefix
-      additionalDataSources:
-        - name: Prometheus
-          type: prometheus
-          uid: prometheus
-          url: http://monitoring-kube-prometheus-prometheus.monitoring:9090/prometheus/
-          access: proxy
-          isDefault: true
-          jsonData:
-            httpMethod: POST
-            timeInterval: 30s
+  kube-state-metrics:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
 
-# k3s does not run etcd
-kubeEtcd:
-  enabled: false
-
-# k3s kube-proxy metrics bound to 127.0.0.1 - unreachable
-kubeProxy:
-  enabled: false
-
-# k3s runs scheduler internally, not as a separate pod
-kubeScheduler:
-  enabled: false
-
-# k3s runs controller-manager internally
-kubeControllerManager:
-  enabled: false
-
-# kubelet ServiceMonitor - configured for k3s
-kubelet:
-  enabled: true
-  serviceMonitor:
-    jobLabel: k8s-app
-    https: true
-    cAdvisor: true
-    probes: true
-    resource: true
-    metricRelabelings:
-      - sourceLabels: [__name__]
-        regex: (rest_client_request_duration_seconds_bucket|rest_client_request_duration_seconds_sum)
-        action: drop
-
-# Node exporter for host-level metrics
-prometheus-node-exporter:
-  resources:
-    requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 100m
-      memory: 128Mi
-
-# kube-state-metrics for cluster object metrics
-kube-state-metrics:
-  resources:
-    requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 100m
-      memory: 128Mi
-
-# Default alerting rules - disable etcd/scheduler rules since k3s doesn't expose them
-defaultRules:
-  create: true
-  rules:
-    etcd: false
-    kubeScheduler: false
-    kubeControllerManager: false
-    kubeProxy: false
+  defaultRules:
+    create: true
+    rules:
+      etcd: false
+      kubeScheduler: false
+      kubeControllerManager: false
+      kubeProxy: false
