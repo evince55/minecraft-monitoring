@@ -5,7 +5,7 @@ metadata:
   namespace: monitoring
   annotations:
     kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/router.middlewares: monitoring-prometheus-stripprefix@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: monitoring-prometheus-root-redirect@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
