@@ -24,6 +24,8 @@ spec:
           env:
             - name: OLLAMA_KEEP_ALIVE
               value: "5m"
+            - name: OLLAMA_NUM_CTX
+              value: "2048"
           resources:
             limits:
               memory: 3Gi

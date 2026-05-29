@@ -95,14 +95,19 @@ async def query_loki(query: str, minutes: int = 5) -> str:
     return ""
 
 
-async def query_ollama(prompt: str, timeout: int = 30) -> str | None:
+async def query_ollama(prompt: str, timeout: int = 120) -> str | None:
     if not OLLAMA_URL:
         return None
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{OLLAMA_URL}/api/generate",
-                json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False},
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"num_ctx": 2048},
+                },
                 timeout=aiohttp.ClientTimeout(total=timeout),
             ) as resp:
                 if resp.status != 200:
