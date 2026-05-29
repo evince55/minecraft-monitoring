@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-bot
+  namespace: discord-bot
+  labels:
+    app: discord-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discord-bot
+  template:
+    metadata:
+      labels:
+        app: discord-bot
+    spec:
+      serviceAccountName: discord-bot
+      containers:
+        - name: bot
+          image: evince55/discord-bot:latest
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: DISCORD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: discord-bot
+                  key: discord-token
+            - name: RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discord-bot
+                  key: rcon-password
+            - name: RCON_HOST
+              value: minecraft-rcon.default
+            - name: RCON_PORT
+              value: "25575"
+            - name: PROMETHEUS_URL
+              value: http://kube-prometheus-stack-prometheus.monitoring:9090/prometheus
+            - name: ADMIN_ROLE_ID
+              value: "0"
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: "1"
+            requests:
+              memory: 128Mi
+              cpu: 100m
