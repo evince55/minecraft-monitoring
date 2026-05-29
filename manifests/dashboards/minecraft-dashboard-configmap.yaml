@@ -95,7 +95,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "rate(minecraft_tps_bucket_sum[1m]) / rate(minecraft_tps_bucket_count[1m])",
+              "expr": "minecraft_tps_bucket_sum / minecraft_tps_bucket_count",
               "instant": false,
               "refId": "A"
             }
@@ -164,7 +164,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(minecraft_player_online)",
+              "expr": "count(increase(minecraft_play_time_ticks_total[5m]) > 0)",
               "instant": false,
               "refId": "A"
             }
@@ -393,7 +393,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "rate(minecraft_tps_bucket_sum[5m]) / rate(minecraft_tps_bucket_count[5m])",
+              "expr": "minecraft_tps_bucket_sum / minecraft_tps_bucket_count",
               "instant": false,
               "legendFormat": "TPS",
               "refId": "A"
@@ -799,7 +799,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "minecraft_player_online == 1",
+              "expr": "increase(minecraft_play_time_ticks_total[5m]) > 0",
               "instant": true,
               "format": "table",
               "refId": "A"
