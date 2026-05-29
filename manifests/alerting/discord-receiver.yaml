@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: discord-receiver
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: monitoring
+spec:
+  route:
+    receiver: discord-critical
+    continue: false
+    matchers:
+      - name: severity
+        value: critical
+    repeatInterval: 4h
+  receivers:
+    - name: discord-critical
+      discordConfigs:
+        - apiURL:
+            key: webhook-url
+            name: alertmanager-discord-webhook
+          sendResolved: true
+      webhookConfigs:
+        - url: http://incident-responder.discord-bot:8080/webhook
+          sendResolved: true

@@ -20,7 +20,7 @@ spec:
             summary: "Minecraft server is down"
             description: "The Minecraft metrics exporter has been unreachable for 1 minute."
         - alert: LowTPS
-          expr: rate(minecraft_tps_bucket_sum[1m]) / rate(minecraft_tps_bucket_count[1m]) < 15
+          expr: minecraft_tps_bucket_sum / minecraft_tps_bucket_count < 15
           for: 5m
           labels:
             severity: warning
@@ -29,7 +29,7 @@ spec:
             summary: "Low TPS detected"
             description: "Server TPS has been below 15 for 5 minutes (current: {{ $value }})."
         - alert: CriticalTPS
-          expr: rate(minecraft_tps_bucket_sum[1m]) / rate(minecraft_tps_bucket_count[1m]) < 10
+          expr: minecraft_tps_bucket_sum / minecraft_tps_bucket_count < 10
           for: 3m
           labels:
             severity: critical
@@ -65,7 +65,7 @@ spec:
             summary: "High system load average"
             description: "System load average has been above 6 for 5 minutes (current: {{ $value }})."
         - alert: NoPlayersOnline
-          expr: sum(minecraft_player_online) == 0
+          expr: count(increase(minecraft_play_time_ticks_total[30m]) > 0) == 0
           for: 30m
           labels:
             severity: info

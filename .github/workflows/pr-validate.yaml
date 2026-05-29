@@ -100,3 +100,13 @@ jobs:
           tags: |
             evince55/discord-bot:latest
             evince55/discord-bot:${{ github.sha }}
+
+      - name: Build and push incident-responder
+        uses: docker/build-push-action@v6
+        with:
+          context: incident-responder
+          file: incident-responder/Dockerfile
+          push: true
+          tags: |
+            evince55/incident-responder:latest
+            evince55/incident-responder:${{ github.sha }}

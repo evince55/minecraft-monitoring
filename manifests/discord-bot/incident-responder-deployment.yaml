@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incident-responder
+  namespace: discord-bot
+  labels:
+    app: incident-responder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: incident-responder
+  template:
+    metadata:
+      labels:
+        app: incident-responder
+    spec:
+      containers:
+        - name: responder
+          image: evince55/incident-responder:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DISCORD_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: incident-responder
+                  key: webhook-url
+            - name: PROMETHEUS_URL
+              value: http://kube-prometheus-stack-prometheus.monitoring:9090/prometheus
+            - name: LOKI_URL
+              value: http://loki-gateway.monitoring:80
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: "1"
+            requests:
+              memory: 64Mi
+              cpu: 100m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
