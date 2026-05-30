@@ -95,16 +95,22 @@ async def query_loki(query: str, minutes: int = 5) -> str:
     return ""
 
 
-async def query_ollama(prompt: str, timeout: int = 120) -> str | None:
+async def query_ollama(
+    prompt: str, timeout: int = 120, system: str = None
+) -> str | None:
     if not OLLAMA_URL:
         return None
     try:
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{OLLAMA_URL}/api/generate",
+                f"{OLLAMA_URL}/api/chat",
                 json={
                     "model": OLLAMA_MODEL,
-                    "prompt": prompt,
+                    "messages": messages,
                     "stream": False,
                     "options": {"num_ctx": 2048},
                 },
@@ -114,7 +120,7 @@ async def query_ollama(prompt: str, timeout: int = 120) -> str | None:
                     log.warning("Ollama returned %s", resp.status)
                     return None
                 data = await resp.json()
-                return data.get("response", "").strip()
+                return data.get("message", {}).get("content", "").strip()
     except Exception as e:
         log.warning("Ollama query failed: %s", e)
     return None
@@ -275,16 +281,20 @@ async def handle_webhook(request: web.Request) -> web.Response:
 
             # 4. AI analysis via Ollama (best-effort, never blocks)
             try:
-                prompt = (
-                    f"Analyze this Minecraft server alert.\n"
+                system_msg = (
+                    "You are a Minecraft server admin assistant. "
+                    "Use ONLY the data provided. Do not repeat or restate the prompt. "
+                    "Do not fabricate or assume any numbers."
+                )
+                user_msg = (
                     f"Alert: {name} ({labels.get('severity', '?')})\n"
                     f"TPS: {diag['tps']}, Heap: {diag['heap_pct']}%, "
                     f"Load: {diag['load']}, Players: {diag['players']}\n"
                     f"Recent logs:\n{diag['logs_sample'][:800]}\n\n"
-                    f"What is likely causing this issue and what should "
-                    f"the admin do? Be concise (3-5 sentences)."
+                    "What is likely causing this issue and what should "
+                    "the admin do? Be concise (3-5 sentences)."
                 )
-                analysis = await query_ollama(prompt)
+                analysis = await query_ollama(user_msg, system=system_msg)
                 if analysis:
                     ai_embed = build_ai_embed(alert, analysis)
                     await post_discord(ai_embed)

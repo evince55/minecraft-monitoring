@@ -1,5 +1,4 @@
 import os
-import textwrap
 
 import aiohttp
 import discord
@@ -12,13 +11,19 @@ OLLAMA_URL = os.environ.get(
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "phi3")
 
 
-async def query_ollama(prompt: str, timeout: int = 60) -> str:
+async def query_ollama(
+    prompt: str, timeout: int = 60, system: str = None
+) -> str:
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
     async with aiohttp.ClientSession() as session:
         async with session.post(
-            f"{OLLAMA_URL}/api/generate",
+            f"{OLLAMA_URL}/api/chat",
             json={
                 "model": OLLAMA_MODEL,
-                "prompt": prompt,
+                "messages": messages,
                 "stream": False,
                 "options": {"num_ctx": 2048},
             },
@@ -28,7 +33,7 @@ async def query_ollama(prompt: str, timeout: int = 60) -> str:
                 body = await resp.text()
                 raise Exception(f"Ollama returned {resp.status}: {body}")
             data = await resp.json()
-            return data.get("response", "").strip()
+            return data.get("message", {}).get("content", "").strip()
 
 
 async def check_ollama_health() -> str:
@@ -91,16 +96,19 @@ class AI(commands.Cog):
             load = float(load_data[0]["value"][1]) if load_data else "N/A"
             players = len(players_data) if players_data else 0
 
-            prompt = textwrap.dedent(f"""\
-                You are a Minecraft server admin assistant. Analyze this situation:
-                - TPS (ticks per second): {tps} (target: 20.0)
-                - JVM heap usage: {heap}
-                - System load average: {load}
-                - Players online: {players}
-
-                What is likely causing performance issues? Be concise (3-5 sentences).
-                Suggest specific things the admin should check.""")
-            analysis = await query_ollama(prompt)
+            system_msg = (
+                "You are a Minecraft server admin assistant. "
+                "Use ONLY the data provided. Do not repeat or restate the prompt. "
+                "Do not fabricate or assume any numbers."
+            )
+            user_msg = (
+                f"TPS: {tps} (target: 20.0), Heap: {heap}, "
+                f"Load: {load}, Players: {players}\n\n"
+                "What is likely causing performance issues? "
+                "Be concise (3-5 sentences). "
+                "Suggest specific things the admin should check."
+            )
+            analysis = await query_ollama(user_msg, system=system_msg)
 
             embed = discord.Embed(
                 title="🤖 Lag Analysis",
@@ -159,14 +167,16 @@ class AI(commands.Cog):
             log_text = "\n".join(lines[-50:])
             log_text = log_text[:1500]
 
-            prompt = textwrap.dedent(f"""\
-                Summarize the following Minecraft server log entries from the
-                last few minutes. Focus on player activity, warnings, and errors.
-                Be concise (3-5 sentences).
-
-                Logs:
-                {log_text}""")
-            summary = await query_ollama(prompt)
+            system_msg = (
+                "You are a Minecraft server log analyst. "
+                "Summarize concisely using only the provided log data."
+            )
+            user_msg = (
+                "Summarize these recent Minecraft server logs. "
+                "Focus on player activity, warnings, and errors. "
+                f"Be concise (3-5 sentences).\n\nLogs:\n{log_text}"
+            )
+            summary = await query_ollama(user_msg, system=system_msg)
 
             embed = discord.Embed(
                 title="📋 Recent Activity Summary",
