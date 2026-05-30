@@ -97,16 +97,18 @@ class AI(commands.Cog):
             players = len(players_data) if players_data else 0
 
             system_msg = (
-                "You are a Minecraft server admin assistant. "
-                "Use ONLY the data provided. Do not repeat or restate the prompt. "
-                "Do not fabricate or assume any numbers."
+                "You are a Minecraft server admin assistant analyzing "
+                "Prometheus metrics. Output exactly 3-5 concise sentences. "
+                "Do not suggest checking configurations you cannot see. "
+                "Do not mention mods, plugins, or hardware you have no "
+                "data about. Base analysis only on the metrics provided."
             )
             user_msg = (
-                f"TPS: {tps} (target: 20.0), Heap: {heap}, "
-                f"Load: {load}, Players: {players}\n\n"
-                "What is likely causing performance issues? "
-                "Be concise (3-5 sentences). "
-                "Suggest specific things the admin should check."
+                "Server: PaperMC 1.21.4, 3GB heap.\n"
+                f"TPS: {tps} (target 20.0) — very low for idle server. "
+                f"Heap: {heap}, Load: {load}, Players online: {players}\n\n"
+                "What specific metrics explain the low TPS? "
+                "Focus on what the data shows, not generic advice."
             )
             analysis = await query_ollama(user_msg, system=system_msg)
 
