@@ -38,5 +38,5 @@ spec:
       interval: 30s
       path: /metrics
     - port: rcon-metrics
-      interval: 15s
+      interval: 30s
       path: /metrics
