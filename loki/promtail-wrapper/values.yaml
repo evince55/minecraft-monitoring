@@ -1,27 +1,31 @@
 # Promtail Helm values for k3s homelab
 # Collects pod logs and ships them to Loki
+#
+# NOTE: This is a wrapper chart with dependency named "promtail".
+# All values must be nested under `promtail:` to be passed to the subchart.
 
-# Loki gateway URL
-config:
-  clients:
-    - url: http://loki-gateway.monitoring/loki/api/v1/push
+promtail:
+  # Loki gateway URL
+  config:
+    clients:
+      - url: http://loki-gateway.monitoring/loki/api/v1/push
 
-  # Drop kube-system namespace logs to reduce noise
-  snippets:
-    extraRelabelConfigs:
-      - source_labels:
-          - __meta_kubernetes_namespace
-        regex: kube-system
-        action: drop
+    # Drop kube-system namespace logs to reduce noise
+    snippets:
+      extraRelabelConfigs:
+        - source_labels:
+            - __meta_kubernetes_namespace
+          regex: kube-system
+          action: drop
 
-# Resource limits
-resources:
-  requests:
-    cpu: 50m
-    memory: 64Mi
-  limits:
-    cpu: 100m
-    memory: 512Mi
+  # Resource limits
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 512Mi
 
-# Tolerations already default to allow scheduling on control-plane nodes
-# (the chart defaults include both master and control-plane taints)
+  # Tolerations already default to allow scheduling on control-plane nodes
+  # (the chart defaults include both master and control-plane taints)
