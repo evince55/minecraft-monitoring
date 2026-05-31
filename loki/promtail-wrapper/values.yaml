@@ -21,7 +21,7 @@ resources:
     memory: 64Mi
   limits:
     cpu: 100m
-    memory: 128Mi
+    memory: 512Mi
 
 # Tolerations already default to allow scheduling on control-plane nodes
 # (the chart defaults include both master and control-plane taints)
