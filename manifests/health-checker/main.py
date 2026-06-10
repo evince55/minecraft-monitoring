@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import os
 import sys
@@ -17,18 +16,14 @@ DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 if not DISCORD_WEBHOOK_URL:
     sys.exit("FATAL: DISCORD_WEBHOOK_URL environment variable is required")
 
-# Services to monitor — sub-path URLs behind Traefik ingress
+# Services to monitor — internal ClusterIP URLs
 SERVICES = [
-    {"name": "Homepage", "url": "https://chai-homelab.com/homepage", "expected": 200},
-    {"name": "Grafana", "url": "https://chai-homelab.com/grafana", "expected": 200},
-    {"name": "Prometheus", "url": "https://chai-homelab.com/prometheus", "expected": 200},
-    {"name": "Loki", "url": "https://chai-homelab.com/loki", "expected": 200},
-    {"name": "ArgoCD", "url": "https://chai-homelab.com/argocd", "expected": 200},
+    {"name": "Homepage", "url": "http://homepage-service.default:3000/", "expected": 200},
+    {"name": "Grafana", "url": "http://kube-prometheus-stack-grafana.monitoring:80/api/health", "expected": 200},
+    {"name": "Prometheus", "url": "http://kube-prometheus-stack-prometheus.monitoring:9090/prometheus/-/healthy", "expected": 200},
+    {"name": "Loki", "url": "http://loki-gateway.monitoring:80/", "expected": 200},
+    {"name": "ArgoCD", "url": "http://argocd-server.argocd:80/argocd/healthz", "expected": 200},
 ]
-
-# Dedup: track last alert time per service to avoid spam
-LAST_ALERT = {}
-DEDUP_WINDOW = 300  # 5 minutes
 
 
 def severity_color(failing: int, total: int) -> int:
@@ -46,18 +41,19 @@ async def check_service(session: aiohttp.ClientSession, service: dict) -> dict:
     expected = service["expected"]
 
     try:
+        start = time.monotonic()
         async with session.get(
             url, timeout=aiohttp.ClientTimeout(total=15), allow_redirects=True
         ) as resp:
+            elapsed_ms = round((time.monotonic() - start) * 1000, 1)
             status = resp.status
-            elapsed = resp.headers.get("X-Response-Time", "?")
             return {
                 "name": name,
                 "url": url,
                 "status": status,
                 "expected": expected,
                 "healthy": status == expected,
-                "response_time": elapsed,
+                "response_time": elapsed_ms,
             }
     except asyncio.TimeoutError:
         return {
@@ -66,7 +62,7 @@ async def check_service(session: aiohttp.ClientSession, service: dict) -> dict:
             "status": "timeout",
             "expected": expected,
             "healthy": False,
-            "response_time": "N/A",
+            "response_time": None,
         }
     except Exception as e:
         return {
@@ -75,18 +71,31 @@ async def check_service(session: aiohttp.ClientSession, service: dict) -> dict:
             "status": str(e),
             "expected": expected,
             "healthy": False,
-            "response_time": "N/A",
+            "response_time": None,
         }
 
 
 async def post_discord(embed: dict):
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=aiohttp.ClientTimeout(total=10)
-        ) as resp:
-            if resp.status >= 400:
-                body = await resp.text()
-                log.error("Discord webhook failed: %s %s", resp.status, body)
+    for attempt in range(3):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status == 429:
+                        retry_after = float(resp.headers.get("Retry-After", 2 ** attempt))
+                        log.warning("Discord rate limited, retrying after %.1fs", retry_after)
+                        await asyncio.sleep(retry_after)
+                        continue
+                    if resp.status >= 400:
+                        body = await resp.text()
+                        log.error("Discord webhook failed: %s %s", resp.status, body)
+                    return
+        except Exception as e:
+            log.error("Discord webhook error (attempt %d): %s", attempt + 1, e)
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)
+    log.error("Discord webhook failed after 3 attempts")
 
 
 def build_health_embed(results: list, timestamp: str) -> dict:
@@ -97,7 +106,7 @@ def build_health_embed(results: list, timestamp: str) -> dict:
     fields = []
     for r in results:
         icon = "✅" if r["healthy"] else "❌"
-        rt = f" ({r['response_time']}ms)" if r["response_time"] != "N/A" and r["response_time"] != "?" else ""
+        rt = f" ({r['response_time']}ms)" if r["response_time"] is not None else ""
         fields.append(
             {
                 "name": f"{icon} {r['name']}",
@@ -121,7 +130,7 @@ def build_alert_embed(results: list, timestamp: str) -> dict:
 
     fields = []
     for r in failing:
-        rt = f" ({r['response_time']}ms)" if r["response_time"] != "N/A" and r["response_time"] != "?" else ""
+        rt = f" ({r['response_time']}ms)" if r["response_time"] is not None else ""
         fields.append(
             {
                 "name": f"❌ {r['name']}",
@@ -150,35 +159,18 @@ async def run_check():
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     healthy = sum(1 for r in results if r["healthy"])
     total = len(results)
-
-    # Post health summary embed every run
-    health_embed = build_health_embed(results, timestamp)
-    await post_discord(health_embed)
-    log.info("Health summary posted: %d/%d up", healthy, total)
-
-    # Alert on failures with dedup
     failing = [r for r in results if not r["healthy"]]
+
+    # Single message per run: red alert if failures, green summary if all healthy
     if failing:
-        now = time.time()
-        should_alert = False
-        for r in failing:
-            last = LAST_ALERT.get(r["name"], 0)
-            if now - last >= DEDUP_WINDOW:
-                should_alert = True
-                LAST_ALERT[r["name"]] = now
-
-        if should_alert:
-            alert_embed = build_alert_embed(failing, timestamp)
-            await post_discord(alert_embed)
-            log.warning("Alert sent for %d failing service(s)", len(failing))
+        embed = build_alert_embed(failing, timestamp)
+        log.warning("Alert: %d failing service(s)", len(failing))
     else:
-        # Clear dedup on full health
-        LAST_ALERT.clear()
+        embed = build_health_embed(results, timestamp)
+        log.info("All %d services healthy", total)
 
-
-def main():
-    asyncio.run(run_check())
+    await post_discord(embed)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(run_check())

@@ -14,10 +14,11 @@ metadata:
   labels:
     app: health-checker
 spec:
-  schedule: "*/5 * * * *"
+  schedule: "0 */3 * * *"
   concurrencyPolicy: Forbid
   failedJobsHistoryLimit: 3
   successfulJobsHistoryLimit: 1
+  startingDeadlineSeconds: 600
   jobTemplate:
     spec:
       template:
