@@ -188,10 +188,10 @@ monitoring/
 
 | Service | URL |
 |---------|-----|
-| Grafana | https://chai-homelab.com/grafana |
-| Prometheus | https://chai-homelab.com/prometheus |
-| Loki | https://chai-homelab.com/loki |
-| ArgoCD | https://chai-homelab.com/argocd |
+| Grafana | http://192.168.1.192/grafana |
+| Prometheus | http://192.168.1.192/prometheus |
+| Loki | http://192.168.1.192/loki |
+| ArgoCD | http://192.168.1.192/argocd |
 
 ## Setup
 
