@@ -11,7 +11,7 @@ spec:
             - name: TYPE
               value: "PAPER"
             - name: MEMORY
-              value: "2G"
+              value: "3G"
             - name: ONLINE_MODE
               value: "TRUE"
             - name: ENFORCE_WHITELIST
@@ -21,7 +21,7 @@ spec:
             - name: ENABLE_QUERY
               value: "true"
             - name: WHITELIST
-              value: "chaitea321, Arch_Xerneas, Trusker, Centurion99Ch"
+              value: "chaitea321, Arch_Xerneas, Trusker, Centurion99Ch, KoolAidBruhhhh, ladaniiphantom"
             - name: JVM_XX_OPTS
               value: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.host=0.0.0.0 -Djava.rmi.server.hostname=127.0.0.1"
         - name: jmx-exporter

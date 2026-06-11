@@ -6,4 +6,15 @@ metadata:
 data:
   config.yml: |
     rules:
-      - pattern: ".*"
+      - pattern: "minecraft<type=(\\w+), sub_type=(\\w+)><>([\\w]+)"
+        name: "minecraft_$1_$2_$3"
+        type: GAUGE
+      - pattern: "java.lang<type=Memory><>HeapMemoryUsage_(used|max)"
+        name: "java_lang_Memory_HeapMemoryUsage_$1"
+        type: GAUGE
+      - pattern: "java.lang<type=OperatingSystem><>SystemLoadAverage"
+        name: "java_lang_OperatingSystem_SystemLoadAverage"
+        type: GAUGE
+      - pattern: "minecraft<type=(\\w+)><>(play_time_ticks_total)"
+        name: "minecraft_$1_$2"
+        type: COUNTER

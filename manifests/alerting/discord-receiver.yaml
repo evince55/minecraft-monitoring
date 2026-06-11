@@ -9,11 +9,11 @@ metadata:
 spec:
   route:
     receiver: discord-critical
-    continue: false
+    repeatInterval: 4h
     matchers:
       - name: severity
-        value: critical
-    repeatInterval: 4h
+        value: critical|warning
+        regex: true
   receivers:
     - name: discord-critical
       discordConfigs:
