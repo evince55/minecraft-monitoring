@@ -1,6 +1,10 @@
+azure-pipelines.yml
 backups/
-*.log
-.env
 .DS_Store
-vault-keys.yaml
+.env
+infra/main.json
+*.log
+*.pyc
+__pycache__/
 vault-init.json
+vault-keys.yaml
