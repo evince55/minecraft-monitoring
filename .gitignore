@@ -11,3 +11,6 @@ vault-keys.yaml
 
 # graphify code-navigation index (generated)
 graphify-out/
+
+# Local session notes / summaries (not for the repo)
+docs/notes/
