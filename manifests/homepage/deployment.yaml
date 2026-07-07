@@ -66,19 +66,3 @@ spec:
       name: http
   selector:
     app: homepage
----
-# Homepage persistent volume claim for configuration
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: homepage-pvc
-  namespace: homepage
-  labels:
-    app: homepage
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  storageClassName: local-path
