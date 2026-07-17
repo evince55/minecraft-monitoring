@@ -37,6 +37,11 @@ loki:
     # push alerts anywhere.
     rulerConfig:
       alertmanager_url: http://kube-prometheus-stack-alertmanager.monitoring.svc:9093
+      # Alertmanager >= 0.27 (shipped by kube-prometheus-stack 85.x) removed
+      # the v1 alerts API — without v2 the ruler evaluates rules but every
+      # notification POST 404s. (Carried over from the superseded PR #5 fix.)
+      enable_alertmanager_v2: true
+      enable_api: true
       storage:
         type: local
         local:
