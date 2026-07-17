@@ -1,0 +1,39 @@
+{
+    "poll_interval_seconds": 30,
+    "services": [
+        {
+            "name": "aria-backend",
+            "url": "http://100.76.103.1:8000/api/health",
+            "type": "http_json",
+            "field": "status",
+            "value": "ok",
+            "timeout": 10
+        },
+        {
+            "name": "minecraft incident-responder",
+            "url": "http://incident-responder.discord-bot:8080/health",
+            "type": "http_ok",
+            "timeout": 10
+        },
+        {
+            "name": "Prometheus",
+            "url": "http://kube-prometheus-stack-prometheus.monitoring:9090/prometheus/-/healthy",
+            "type": "http_ok",
+            "timeout": 10
+        },
+        {
+            "name": "Grafana",
+            "url": "http://kube-prometheus-stack-grafana.monitoring/api/health",
+            "type": "http_json",
+            "field": "database",
+            "value": "ok",
+            "timeout": 10
+        },
+        {
+            "name": "Loki",
+            "url": "http://loki-gateway.monitoring/ready",
+            "type": "http_ok",
+            "timeout": 10
+        }
+    ]
+}
