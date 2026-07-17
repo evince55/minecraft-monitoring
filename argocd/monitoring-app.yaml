@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:chaitea321/minecraft-monitoring.git
+    repoURL: git@github.com:evince55/minecraft-monitoring.git
     path: helm/kube-prometheus-stack
     helm:
       valueFiles:

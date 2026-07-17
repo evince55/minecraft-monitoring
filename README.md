@@ -8,7 +8,7 @@
 
 <br/>
 
-[![PR Validate](https://github.com/chaitea321/minecraft-monitoring/actions/workflows/pr-validate.yaml/badge.svg)](https://github.com/chaitea321/minecraft-monitoring/actions/workflows/pr-validate.yaml)
+[![PR Validate](https://github.com/evince55/minecraft-monitoring/actions/workflows/pr-validate.yaml/badge.svg)](https://github.com/evince55/minecraft-monitoring/actions/workflows/pr-validate.yaml)
 &nbsp;![License: MIT](https://img.shields.io/badge/License-MIT-3DA639?style=flat-square)
 &nbsp;![PaperMC](https://img.shields.io/badge/PaperMC-1.21.4-5FA83C?style=flat-square)
 &nbsp;![k3s](https://img.shields.io/badge/k3s-v1.34-FFC61C?style=flat-square&logo=k3s&logoColor=black)
@@ -255,7 +255,7 @@ monitoring/
 Everything is reconciled by Argo CD via App-of-Apps. Install the root app once; the rest follows from `main`.
 
 ```bash
-git clone git@github.com:chaitea321/minecraft-monitoring.git
+git clone git@github.com:evince55/minecraft-monitoring.git
 cd minecraft-monitoring
 kubectl apply -f argocd/root-app.yaml   # bootstraps every other Application
 ```
