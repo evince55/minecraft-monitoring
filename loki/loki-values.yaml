@@ -47,6 +47,14 @@ loki:
       enabled: true
       size: 5Gi
       storageClassName: local-path
+    # Loki ruler — evaluates LogQL alerting rules and sends them to Alertmanager.
+    # CLI flags are used directly because the chart's values.schema.json constrains
+    # the rulerConfig section to storage-only; these flags configure the full ruler.
+    extraArgs:
+      - -ruler.alertmanager-url=http://alertmanager-operated.monitoring:9093
+      - -ruler.ring.kvstore.store=inmemory
+      - -ruler.enable-api=true
+      - -ruler.rule-path=/rules
 
   # Gateway (nginx reverse proxy)
   gateway:
