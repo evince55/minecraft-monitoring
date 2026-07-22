@@ -14,6 +14,14 @@ spec:
     server: https://kubernetes.default.svc
     namespace: monitoring
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
+    # GATED 2026-07-21: automated sync intentionally disabled.
+    # This app owns manifests/minecraft/deployment.yaml, which codifies the
+    # previously-unmanaged minecraft-server Deployment. The first sync takes
+    # ownership and RESTARTS the game server, so it must run in a maintenance
+    # window with no players online -- not whenever a commit happens to land.
+    # Re-enable by restoring the automated block below and syncing this app:
+    #   automated:
+    #     prune: true
+    #     selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
