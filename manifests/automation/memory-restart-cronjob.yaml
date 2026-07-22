@@ -84,19 +84,39 @@ spec:
           serviceAccountName: minecraft-memory-restart
           containers:
             - name: memory-checker
-              image: alpine:3.20
+              # curl is baked in, NOT installed at runtime. This used to be
+              # alpine:3.20 + `apk add --no-cache curl jq`, which made the heap
+              # watchdog depend on dl-cdn.alpinelinux.org being reachable on
+              # EVERY run. On 2026-07-21 the CDN returned "temporary error" and,
+              # under `set -eu`, the job aborted, retried, and died with
+              # BackoffLimitExceeded (two KubeJobFailed alerts) -- the memory
+              # guard was down precisely because of an unrelated external
+              # outage. A prebaked image pulls once and is then cached, so the
+              # watchdog no longer needs egress to function.
+              image: curlimages/curl:8.20.0
               command:
                 - /bin/sh
                 - -c
                 - |
                   set -eu
-                  apk add --no-cache curl jq >/dev/null
 
                   PROM="http://kube-prometheus-stack-prometheus.monitoring:9090/prometheus"
-                  QUERY='java_lang_Memory_HeapMemoryUsage_used/java_lang_Memory_HeapMemoryUsage_max'
+                  # NOTE: the jmx_prometheus_javaagent (>=1.x) emits
+                  # OpenMetrics-style names; the old
+                  # java_lang_Memory_HeapMemoryUsage_* series no longer exist,
+                  # which silently disabled this watchdog ("No heap metric
+                  # returned; skipping"). Use the current jvm_memory_* names.
+                  QUERY='sum(jvm_memory_used_bytes{area="heap"})/sum(jvm_memory_max_bytes{area="heap"})'
 
+                  # jq is not in this image; the query returns a single scalar
+                  # vector, so pull .data.result[0].value[1] with sed. On an
+                  # empty result set this yields "" and we skip, same as the
+                  # old `// empty`.
                   MEMORY_USAGE=$(curl -sf --data-urlencode "query=${QUERY}" \
-                    "${PROM}/api/v1/query" | jq -r '.data.result[0].value[1] // empty')
+                    "${PROM}/api/v1/query" \
+                    | tr '}' '\n' \
+                    | sed -n 's/.*"value":\[[^,]*,"\([^"]*\)".*/\1/p' \
+                    | head -1)
 
                   if [ -z "$MEMORY_USAGE" ]; then
                     echo "No heap metric returned; skipping."
@@ -130,17 +150,11 @@ spec:
                   # Notify Discord (webhook URL is the full URL from Key Vault).
                   if [ -n "${WEBHOOK_URL:-}" ]; then
                     TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-                    PAYLOAD=$(jq -n --arg pct "${PCT}%" --arg time "$TIME" '{
-                      embeds: [{
-                        title: "🔄 Auto-Restart Triggered",
-                        description: "JVM heap usage exceeded 90%",
-                        color: 15974977,
-                        fields: [
-                          {name: "Heap", value: $pct, inline: true},
-                          {name: "Time", value: $time, inline: true}
-                        ]
-                      }]
-                    }')
+                    # Built with printf rather than jq (not in this image).
+                    # Both interpolated values are machine-generated -- a
+                    # "%.1f" number and a strftime timestamp -- so neither can
+                    # contain quotes or backslashes that would break the JSON.
+                    PAYLOAD=$(printf '{"embeds":[{"title":"\360\237\224\204 Auto-Restart Triggered","description":"JVM heap usage exceeded 90%%","color":15974977,"fields":[{"name":"Heap","value":"%s%%","inline":true},{"name":"Time","value":"%s","inline":true}]}]}' "$PCT" "$TIME")
                     curl -sf -X POST "$WEBHOOK_URL" \
                       -H "Content-Type: application/json" \
                       -d "$PAYLOAD" >/dev/null \
