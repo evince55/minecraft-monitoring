@@ -10,7 +10,7 @@
 
 [![PR Validate](https://github.com/evince55/minecraft-monitoring/actions/workflows/pr-validate.yaml/badge.svg)](https://github.com/evince55/minecraft-monitoring/actions/workflows/pr-validate.yaml)
 &nbsp;![License: MIT](https://img.shields.io/badge/License-MIT-3DA639?style=flat-square)
-&nbsp;![PaperMC](https://img.shields.io/badge/PaperMC-1.21.4-5FA83C?style=flat-square)
+&nbsp;![PaperMC](https://img.shields.io/badge/PaperMC-26.1.2-5FA83C?style=flat-square)
 &nbsp;![k3s](https://img.shields.io/badge/k3s-v1.34-FFC61C?style=flat-square&logo=k3s&logoColor=black)
 
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=flat-square&logo=kubernetes&logoColor=white)
@@ -174,7 +174,7 @@ increase(minecraft_play_time_ticks_total[5m]) > 0
 
 <br/>
 
-Ollama's `/api/generate` ignores chat templates — phi3 echoes the prompt and hallucinates numbers. Switching to `/api/chat` with a structured `messages` array engages phi3's native chat template and lets a system message set guardrails ("use only the data provided", "don't restate the prompt", "don't fabricate numbers") plus server context (PaperMC 1.21.4, 3 GB heap).
+Ollama's `/api/generate` ignores chat templates — phi3 echoes the prompt and hallucinates numbers. Switching to `/api/chat` with a structured `messages` array engages phi3's native chat template and lets a system message set guardrails ("use only the data provided", "don't restate the prompt", "don't fabricate numbers") plus server context (PaperMC 26.1.2, 3 GB heap).
 </details>
 
 <details>
