@@ -11,7 +11,7 @@ data:
     services:
       # Minecraft Services
       - name: Minecraft Server
-        description: PaperMC 1.21.4 Server
+        description: PaperMC 26.1.2 Server
         logo: minecraft.png
         url: http://localhost:3000
         widget:

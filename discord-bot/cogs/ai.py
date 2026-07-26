@@ -98,7 +98,7 @@ class AI(commands.Cog):
                 "data about. Base analysis only on the metrics provided."
             )
             user_msg = (
-                "Server: PaperMC 1.21.4, 3GB heap.\n"
+                "Server: PaperMC 26.1.2, 3GB heap.\n"
                 f"TPS: {tps} (target 20.0) — very low for idle server. "
                 f"Heap: {heap}, Load: {load}, Players online: {players}\n\n"
                 "What specific metrics explain the low TPS? "
