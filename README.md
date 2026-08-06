@@ -109,8 +109,7 @@ flowchart TB
 
 ### Monitoring & dashboards
 
-- **20-panel Grafana dashboard** — TPS, JVM heap, GC rate, CPU/load, player stats, movement, crafting, and health.
-- **Minecraft logs dashboard** — live PaperMC log stream with level filtering and error tracking.
+- **Three Grafana dashboards, 20 panels total** — Server (4: TPS, JVM heap, GC rate, CPU/load), Player (8: session stats, movement, crafting, health), and Logs (8: live PaperMC log stream with level filtering and error tracking).
 - **Homepage** — one-glance status board across every homelab service, with a public Uptime Kuma status page.
 - **Alert rules** — server-down, low/critical TPS, high heap (warning + critical), high system load, and no-players.
 - **Predictive alerts** — memory-leak (`predict_linear` on heap), disk exhaustion, and TPS decline.
@@ -136,7 +135,7 @@ AI is **best-effort** — if Ollama is slow (CPU-bound, ~38 s/query) or down, al
 | Runtime | **k3s** (v1.34) | Lightweight Kubernetes |
 | Server | **PaperMC** 26.1.2 | Minecraft server (Java 25) |
 | Metrics | **Prometheus** / kube-prometheus-stack | Collection + alerting |
-| Dashboards | **Grafana** | 20-panel Minecraft dashboard |
+| Dashboards | **Grafana** | 3 dashboards, 20 panels (server · player · logs) |
 | Logs | **Loki + Promtail** | Aggregation (7-day retention) |
 | Alerting | **AlertManager** | Discord webhook routing |
 | GitOps | **Argo CD** | App-of-Apps deployment |
