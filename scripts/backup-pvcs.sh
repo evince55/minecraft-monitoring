@@ -265,6 +265,10 @@ backup_pod "alertmanager" "monitoring" "statefulset/alertmanager-kube-prometheus
 # Homepage - /app/config contains YAML configs
 backup_pod "homepage" "default" "deploy/homepage" "homepage" "/app/config" ""
 
+# n8n - /home/node/.n8n contains the SQLite DB, binary data, workflow state
+# The n8n image ships busybox tar, so the in-container path works (verified).
+backup_pod "n8n" "automation" "deploy/n8n" "n8n" "/home/node/.n8n" ""
+
 # Summary
 total_size=$(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1)
 backup_count=$(find "$BACKUP_DIR" -name "*.tar.zst" -print 2>/dev/null | wc -l)

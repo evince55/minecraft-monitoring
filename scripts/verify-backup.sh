@@ -28,6 +28,7 @@ declare -A EXPECTED_FILES=(
     ["prometheus"]="chunks_head"
     ["alertmanager"]="silences"
     ["homepage"]="services.yaml"
+    ["n8n"]="database.sqlite"
 )
 
 log "=== Backup Integrity Verification ==="
@@ -40,7 +41,7 @@ if [ ! -d "$BACKUP_DIR" ]; then
 fi
 
 # Check each backup type
-for name in minecraft grafana prometheus alertmanager homepage; do
+for name in minecraft grafana prometheus alertmanager homepage n8n; do
     # Find latest backup for this service
     latest=$($FIND "$BACKUP_DIR" -name "${name}-*.tar.zst" -printf "%T@ %p\n" 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
 
@@ -88,7 +89,7 @@ done
 # Check backup age (warn if older than 2 days)
 log ""
 log "=== Backup Freshness ==="
-for name in minecraft grafana prometheus alertmanager homepage; do
+for name in minecraft grafana prometheus alertmanager homepage n8n; do
     latest=$($FIND "$BACKUP_DIR" -name "${name}-*.tar.zst" -printf "%T@ %p\n" 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
     if [ -n "$latest" ] && [ -f "$latest" ]; then
         age_days=$(( ($(date +%s) - $(stat -c %Y "$latest")) / 86400 ))
