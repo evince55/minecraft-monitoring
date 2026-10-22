@@ -32,7 +32,7 @@ A self-hosted platform that gives a Minecraft server the same observability you'
 
 - **Full observability pipeline** — metrics, logs, dashboards, and alerting wired end-to-end for a single game server, on a single-node k3s home cluster.
 - **ChatOps control plane** — 12 Discord slash commands manage the server over RCON without SSH or a console.
-- **AI-assisted incident response** — alerts arrive pre-enriched with live PromQL/LogQL diagnostics and a phi3 (Ollama) root-cause summary, non-blocking by design.
+- **AI-assisted incident response** — alerts arrive pre-enriched with live PromQL/LogQL diagnostics and a MiniCPM5-2B (Ollama) root-cause summary, non-blocking by design.
 - **GitOps all the way down** — Argo CD App-of-Apps reconciles the entire stack from this repo; zero manual `kubectl apply`.
 - **Operable** — daily zstd PVC backups with restore verification, predictive alerts (memory-leak / disk / TPS decline), and CI that lints and validates every manifest.
 
@@ -52,7 +52,7 @@ flowchart TB
     subgraph OPS["ChatOps + Automation"]
         BOT["Discord Bot<br/>12 slash commands"]
         IR["Incident Responder<br/>diagnostics + AI"]
-        OLLA["Ollama · phi3<br/>local LLM"]
+        OLLA["Ollama · MiniCPM5-2B<br/>local LLM"]
     end
 
     HOME["Homepage<br/>unified dashboard"]
@@ -123,10 +123,10 @@ When Prometheus fires an alert, the incident-responder:
 1. Forwards it to Discord as a rich embed.
 2. Gathers live diagnostics from Prometheus (TPS, heap, load, players, uptime).
 3. Pulls recent server logs from Loki.
-4. Runs a phi3 (Ollama) root-cause analysis.
+4. Runs a MiniCPM5-2B (Ollama) root-cause analysis.
 5. Posts alert + diagnostics + AI embeds together.
 
-AI is **best-effort** — if Ollama is slow (CPU-bound, ~38 s/query) or down, alert delivery is never blocked.
+AI is **best-effort** — if Ollama is slow (CPU-bound, ~14 s median / ~18 s p95 for MiniCPM5-2B) or down, alert delivery is never blocked.
 
 ## Tech stack
 
@@ -141,7 +141,7 @@ AI is **best-effort** — if Ollama is slow (CPU-bound, ~38 s/query) or down, al
 | GitOps | **Argo CD** | App-of-Apps deployment |
 | Secrets | **External Secrets Operator** | Azure Key Vault backend |
 | Ingress | **Traefik** | Sub-path routing + middlewares |
-| AI | **Ollama + phi3** | Local LLM (2.2 GB model) |
+| AI | **Ollama + MiniCPM5-2B** | Local LLM (1.6 GB, Q4_K_M) |
 | CI | **GitHub Actions** | YAML lint · Helm lint · kubeconform · Docker build |
 
 ## Engineering decisions
@@ -173,7 +173,7 @@ increase(minecraft_play_time_ticks_total[5m]) > 0
 
 <br/>
 
-Ollama's `/api/generate` ignores chat templates — phi3 echoes the prompt and hallucinates numbers. Switching to `/api/chat` with a structured `messages` array engages phi3's native chat template and lets a system message set guardrails ("use only the data provided", "don't restate the prompt", "don't fabricate numbers") plus server context (PaperMC 26.1.2, 3 GB heap).
+Ollama's `/api/generate` ignores chat templates — the previous phi3 responder model echoed the prompt and hallucinated numbers. Switching to `/api/chat` with a structured `messages` array engages the model's chat template and lets a system message set guardrails ("use only the data provided", "don't restate the prompt", "don't fabricate numbers") plus server context (PaperMC 26.1.2, 3 GB heap). MiniCPM5-2B also gets an explicit no-think template and `think:false` so its output budget is spent on the answer, not reasoning tokens.
 </details>
 
 <details>
@@ -181,7 +181,7 @@ Ollama's `/api/generate` ignores chat templates — phi3 echoes the prompt and h
 
 <br/>
 
-Ollama ignores the `OLLAMA_NUM_CTX` environment variable; the context size must be set per request (`"options": {"num_ctx": 2048}`). At the default 4096, the KV cache (~1536 MiB) plus the model (~2075 MiB) blew past the 3Gi limit and OOM-killed the pod (exit `-1`). Halving the context fixed it.
+Ollama ignores the `OLLAMA_NUM_CTX` environment variable; the context size must be set per request (`"options": {"num_ctx": 2048}`). At the default 4096, phi3's KV cache plus model could exceed the original 3 GiB limit and get OOM-killed. The responder now pins 2048 and uses MiniCPM5-2B, which measured ~1.8 GB anonymous RSS on the 4 GiB pod; the 4 GiB limit is retained so phi3 remains available for the Discord bot and rollback.
 </details>
 
 <details>
@@ -189,7 +189,58 @@ Ollama ignores the `OLLAMA_NUM_CTX` environment variable; the context size must 
 
 <br/>
 
-AlertManager fans each alert out to a direct Discord webhook (instant) **and** to the incident-responder (enriched). The responder processes asynchronously, so a slow 38-second Ollama call never delays the first notification.
+AlertManager fans each alert out to a direct Discord webhook (instant) **and** to the incident-responder (enriched). The responder processes asynchronously, so a slow Ollama call (observed ~14 s median for MiniCPM5-2B, ~25 s for phi3) never delays the first notification.
+</details>
+
+<details>
+<summary><b>Incident responder model: MiniCPM5-2B Q4_K_M</b></summary>
+
+<br/>
+
+The responder uses `minicpm5-nothink`:
+
+- MiniCPM5-2B Q4_K_M, 1.6 GB on disk, ~1.8 GB anonymous RSS during inference.
+- `think:false`, `num_ctx=2048`, `num_predict=256`, `temperature=0.3`, `top_p=0.95`, `min_p=0.0`.
+- `OLLAMA_STRUCTURED=true` sends a precomputed fact sheet with evidence IDs (`A1`–`A3`, `M1`–`M4`, `L1`–`Ln`) and requests JSON-only output. A deterministic validator rejects unsupported numbers, invalid evidence IDs, false missing-data claims, alert/consistency contradictions, and unsafe or dismissive actions; rejected output falls back to a grounded rule-based summary.
+- `OLLAMA_MAX_LOADED_MODELS=1` prevents phi3 and MiniCPM5 from loading at the same time.
+- Measured on the 4 GiB pod at temperature 0.3: 12/12 structured answers valid, ~14 s median and ~18 s p95 warm latency, ~1.9 GB anonymous RSS, no OOM kills; the phi3 baseline was ~25 s and ~4.0 GB anonymous RSS and still OOM-killed under sustained 12-request load at both 2048 and 1024 contexts.
+- A `llama3.2:3b` Q4_K_M fallback was tested and rejected: it fit the pod without OOMs, but produced numeric contradictions (for example, calling TPS 8.2 “high” and reading 2040→2035 MB as an increase) and was slower than MiniCPM5.
+- Q8_0 was tested and rejected: it used 2.9 GB anonymous RSS (versus 1.9 GB), produced 11/12 valid answers, and ran at ~20.5 s median / ~23.7 s p95. Q4_K_M is the final choice.
+- Thinking mode is intentionally disabled. The structured no-think path meets the quality gate; enabling thinking would add latency and memory pressure inside the 4 GiB limit and would need a separate benchmark.
+- AI analysis is advisory. Every AI embed carries an “AI-generated; verify before acting” footer, and unsafe recommendation sentences are removed before posting.
+
+Provision after a fresh model volume:
+
+```bash
+kubectl -n ollama exec ollama-0 -- ollama pull hf.co/openbmb/MiniCPM5-2B-GGUF:Q4_K_M
+kubectl -n ollama exec ollama-0 -- ollama cp hf.co/openbmb/MiniCPM5-2B-GGUF:Q4_K_M minicpm5-base
+kubectl -n ollama exec -i ollama-0 -- sh -c 'cat > /tmp/Modelfile.minicpm5-nothink' <<'EOF'
+FROM minicpm5-base
+
+TEMPLATE """{{- if .Messages -}}
+{{- range .Messages -}}
+<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end -}}
+<|im_start|>assistant
+<think>
+
+</think>
+
+{{ end -}}"""
+
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "</s>"
+PARAMETER temperature 0.3
+PARAMETER top_p 0.95
+PARAMETER min_p 0.0
+PARAMETER num_ctx 2048
+PARAMETER num_predict 256
+EOF
+kubectl -n ollama exec ollama-0 -- ollama create minicpm5-nothink -f /tmp/Modelfile.minicpm5-nothink
+```
+
+`phi3` intentionally remains installed for the Discord bot's general AI commands and as a rollback path. To roll back the responder, set `OLLAMA_MODEL=phi3` and `OLLAMA_STRUCTURED=false` (the legacy free-text prompt and sanitizer remain available), and remove `OLLAMA_THINK`.
 </details>
 
 <details>
@@ -310,7 +361,14 @@ Behind Traefik on the cluster host (`http://<node-ip>/…`, NodePort `30102` for
 | `PROMETHEUS_URL` | Prometheus endpoint | `http://kube-prometheus-stack-prometheus.monitoring:9090/prometheus` |
 | `LOKI_URL` | Loki gateway endpoint | `http://loki-gateway.monitoring:80` |
 | `OLLAMA_URL` | Ollama endpoint (empty = skip AI) | `""` |
-| `OLLAMA_MODEL` | LLM model name | `phi3` |
+| `OLLAMA_MODEL` | LLM model name | `minicpm5-nothink` |
+| `OLLAMA_THINK` | Send `think:false` to disable reasoning | `""` |
+| `OLLAMA_STRUCTURED` | Use fact-sheet JSON output and validation | `true` |
+| `OLLAMA_NUM_PREDICT` | Maximum generated tokens | `256` |
+| `OLLAMA_TEMPERATURE` | Sampling temperature | `0.3` |
+| `OLLAMA_TOP_P` | Nucleus sampling | `0.95` |
+| `OLLAMA_MIN_P` | Minimum-probability sampling | `0.0` |
+| `OLLAMA_SEED` | Sampling seed for reproducible output | `42` |
 
 </details>
 
