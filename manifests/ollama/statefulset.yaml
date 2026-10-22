@@ -23,9 +23,11 @@ spec:
             - containerPort: 11434
           env:
             - name: OLLAMA_KEEP_ALIVE
-              value: "5m"
+              value: "30s"
             - name: OLLAMA_NUM_CTX
               value: "2048"
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: "1"
           resources:
             limits:
               memory: 4Gi

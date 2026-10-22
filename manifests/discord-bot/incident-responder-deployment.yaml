@@ -33,7 +33,21 @@ spec:
             - name: OLLAMA_URL
               value: http://ollama.ollama:11434
             - name: OLLAMA_MODEL
-              value: phi3
+              value: minicpm5-nothink
+            - name: OLLAMA_THINK
+              value: "false"
+            - name: OLLAMA_STRUCTURED
+              value: "true"
+            - name: OLLAMA_NUM_PREDICT
+              value: "256"
+            - name: OLLAMA_TEMPERATURE
+              value: "0.3"
+            - name: OLLAMA_TOP_P
+              value: "0.95"
+            - name: OLLAMA_MIN_P
+              value: "0.0"
+            - name: OLLAMA_SEED
+              value: "42"
           resources:
             limits:
               memory: 256Mi
