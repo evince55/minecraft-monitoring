@@ -29,8 +29,11 @@ spec:
             - name: OLLAMA_MAX_LOADED_MODELS
               value: "1"
           resources:
+            # Measured 2026-11-08: minicpm5-nothink-q8 peaks at ~3.3Gi with the
+            # default 2048-token context. 4Gi got llama-server OOM-killed three
+            # times on 2026-10-21; 6Gi leaves room for longer contexts.
             limits:
-              memory: 4Gi
+              memory: 6Gi
               cpu: "4"
             requests:
               memory: 2Gi
