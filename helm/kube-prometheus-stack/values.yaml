@@ -99,6 +99,10 @@ kube-prometheus-stack:
 
   # Grafana config
   grafana:
+    # Chart 13.x renders a helm-test Pod (bats) with no resources; monitoring-quota
+    # would reject it. We never run `helm test`, so do not render it.
+    testFramework:
+      enabled: false
     resources:
       requests:
         cpu: 100m
@@ -175,6 +179,9 @@ kube-prometheus-stack:
       cAdvisor: true
       probes: true
       resource: true
+      # Chart default is /metrics/resource/v1alpha1, which modern kubelets 404
+      # (permanent TargetDown x2 since Jun 29). The stable path is /metrics/resource.
+      resourcePath: "/metrics/resource"
       metricRelabelings:
         - sourceLabels: [__name__]
           regex: (rest_client_request_duration_seconds_bucket|rest_client_request_duration_seconds_sum)

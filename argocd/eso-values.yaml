@@ -1,0 +1,30 @@
+# Helm values for the `external-secrets` release (namespace eso-system).
+# Not an ArgoCD-managed app: applied with
+#   helm upgrade external-secrets external-secrets/external-secrets -n eso-system \
+#     --version <ver> -f argocd/eso-values.yaml
+# The resources below were previously kubectl-patched onto the live Deployments
+# and existed nowhere in git; eso-system-quota rejects pods without them.
+installCRDs: true
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+webhook:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+certController:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi

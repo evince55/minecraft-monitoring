@@ -65,10 +65,13 @@ jobs:
 
       - name: Template and validate Helm charts
         run: |
-          for chart in helm/kube-prometheus-stack loki loki/promtail-wrapper; do
-            echo "=== $chart ==="
-            if rendered=$(helm template test-release "$chart" 2>&1); then
-              echo "$rendered" | kubeconform -summary -ignore-missing-schemas -stdin
+          # chart:values-file, mirroring each ArgoCD Application's helm.valueFiles
+          for entry in helm/kube-prometheus-stack:values.yaml loki:loki-values.yaml loki/promtail-wrapper:values.yaml; do
+            chart="${entry%%:*}"
+            values="${entry#*:}"
+            echo "=== $chart (-f $values) ==="
+            if rendered=$(helm template test-release "$chart" -f "$chart/$values" 2>&1); then
+              echo "$rendered" | kubeconform -summary -ignore-missing-schemas -
               echo "  OK"
             else
               echo "  FAILED to template:"
