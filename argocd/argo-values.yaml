@@ -1,3 +1,9 @@
+# Chart 10.x defaults global.networkPolicy.create to true. Keep the pre-upgrade
+# behaviour (no policies; the rest of the lab is open pod-to-pod too) so this
+# upgrade changes versions only. Turning policies on is a separate decision.
+global:
+  networkPolicy:
+    create: false
 configs:
   params:
     server.insecure: true
@@ -38,22 +44,36 @@ controller:
     limits:
       cpu: 1000m
       memory: 2Gi
-dexServer:
+# dex/notifications live pods predate argocd-quota and ran with NO resources
+# (helm rev 2 never received these blocks). Sized from observed use
+# (dex ~22Mi, notifications ~17Mi, Nov 2026) so steady state fits the quota.
+# NOTE: the chart key is `dex`, not `dexServer` -- the old `dexServer:` block
+# was silently ignored, which is why dex never had limits.
+dex:
   resources:
     requests:
+      cpu: 25m
+      memory: 48Mi
+    limits:
       cpu: 100m
       memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
+  initImage:
+    # copyutil init container
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
 notifications:
   resources:
     requests:
+      cpu: 25m
+      memory: 48Mi
+    limits:
       cpu: 100m
       memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
 redis:
   resources:
     requests:
@@ -62,3 +82,12 @@ redis:
     limits:
       cpu: 200m
       memory: 256Mi
+# pre-install/pre-upgrade hook Job; argocd-quota rejects it without resources.
+redisSecretInit:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
